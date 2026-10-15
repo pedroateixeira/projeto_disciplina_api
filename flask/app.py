@@ -1,6 +1,6 @@
-from flask import Flask, request, jsonify
 import pickle
-import numpy as np
+
+from flask import Flask, jsonify, request
 
 # Criando a aplicação flask
 

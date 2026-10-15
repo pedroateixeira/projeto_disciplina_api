@@ -1,7 +1,9 @@
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel, Field
 import pickle
+
 import numpy as np
+from pydantic import BaseModel, Field
+
+from fastapi import FastAPI, HTTPException
 
 
 class IrisRequest(BaseModel):
