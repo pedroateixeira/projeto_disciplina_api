@@ -3,6 +3,11 @@ import os
 import requests
 import streamlit as st
 
+st.set_page_config(
+    page_title="Classificador Iris",
+    page_icon="🌸",
+    layout="centered",
+)
 API_URL = os.getenv("API_URL", "http://localhost:8000")
 
 st.title("Classificador de Flores Iris")
