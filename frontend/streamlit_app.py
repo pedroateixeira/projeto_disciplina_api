@@ -19,7 +19,7 @@ if st.session_state.token is None:
             r = requests.post(
                 f"{API_URL}/login",
                 json={"username": username, "password": password},
-                timeout=30,
+                timeout=60,
             )
             if r.status_code == 200:
                 st.session_state.token = r.json()["access_token"]
@@ -44,7 +44,7 @@ else:
                 "petal_width": petal_width,
             },
             headers={"Authorization": f"Bearer {st.session_state.token}"},
-            timeout=30,
+            timeout=60,
         )
         if r.status_code == 200:
             dados = r.json()
