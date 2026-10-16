@@ -9,6 +9,7 @@ import pickle
 from pathlib import Path
 
 import numpy as np
+from fastapi import Depends, FastAPI, HTTPException
 from pydantic import BaseModel, Field
 
 from app.auth import (
@@ -17,7 +18,6 @@ from app.auth import (
     create_token,
     get_current_user,
 )
-from fastapi import Depends, FastAPI, HTTPException
 
 ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
 
