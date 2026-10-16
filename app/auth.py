@@ -14,8 +14,8 @@ ALGORITHM = "HS256"
 TOKEN_EXPIRE_MINUTES = 15
 
 USERS_DB = {
-    "admin": {"password": "admin123", "role": "admin"},
-    "user": {"password": "user123", "role": "user"},
+    "admin": {"password": os.getenv("ADMIN_PASSWORD"), "role": "admin"},
+    "user": {"password": os.getenv("USER_PASSWORD"), "role": "user"},
 }
 
 security = HTTPBearer()

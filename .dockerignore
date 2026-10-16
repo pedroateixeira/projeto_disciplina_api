@@ -1,7 +1,13 @@
 .venv/
 **/__pycache__/
+*.pyc
 .git/
+.gitignore
+.dockerignore
+Dockerfile
 .env
 **/.env
-/fastAPI
-/flask
+fastAPI/
+flask/
+frontend/
+README.md
