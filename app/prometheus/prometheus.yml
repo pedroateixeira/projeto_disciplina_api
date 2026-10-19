@@ -1,0 +1,21 @@
+#config prometheus 
+
+global: 
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  - "alerts.yml"
+
+scrape_configs: 
+  -job_name:"prometheus"
+  static_configs:
+    -  targets:['localhost: 9090']
+  
+  -job_name: 'api-iris'
+  static_configs:
+    -targets: ['api:8000']
+  metrics_path:'/metrics'
+
+
+

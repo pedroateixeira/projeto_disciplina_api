@@ -5,9 +5,8 @@ import os
 from datetime import datetime, timedelta
 
 import jwt
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-
 from fastapi import Depends, HTTPException
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 SECRET_KEY = os.getenv("JWT_SECRET", "chave-secreta-mudar-em-prod")
 ALGORITHM = "HS256"
@@ -25,7 +24,7 @@ def create_token(username: str, role: str) -> str:
     """
     Cria um token JWT com expiração
     """
-    expire = datetime.utcnow() + timedelta(minutes=TOKEN_EXPIRE_MINUTES)
+    expire = datetime.utcnow() + timedelta(minutes=TOKEN_EXPIRE_MINUTES)  # noqa: DTZ003
     payload = {
         "sub": username,
         "role": role,
