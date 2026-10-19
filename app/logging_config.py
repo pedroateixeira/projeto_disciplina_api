@@ -4,7 +4,8 @@ Configura os logs estruturados em JSON
 
 import logging
 import sys
-from datetime import datetime
+from datetime import datetime, timezone
+
 from pythonjsonlogger import jsonlogger
 
 
@@ -14,13 +15,13 @@ class CustomJsonFormatter(jsonlogger.JsonFormatter):
     """
 
     def add_fields(self, log_record, record, message_dict):
-        log_record["timestamp"] = datetime.utcnow().isoformat() + "Z"
+        super().add_fields(log_record, record, message_dict)  # mantem o extra={...}
+        log_record["timestamp"] = (
+            datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+        )
         log_record["level"] = record.levelname
         log_record["service"] = "api-iris"
         log_record["logger"] = record.name
-
-        if not log_record.get("message"):
-            log_record["message"] = record.getMessage()
 
 
 def setup_logging(level: str = "INFO") -> logging.Logger:
@@ -31,13 +32,11 @@ def setup_logging(level: str = "INFO") -> logging.Logger:
     returns:
     logger configurado em json
     """
-    logger = logging.getLoger("api")
+    logger = logging.getLogger("api")
     logger.setLevel(getattr(logging, level.upper()))
 
     handler = logging.StreamHandler(sys.stdout)
-    handler.setFormatter(
-        CustomJsonFormatter("%(timestamp)s %(level)s %(name)s %(message)s")
-    )
+    handler.setFormatter(CustomJsonFormatter("%(message)s"))
 
     logger.handlers = []
     logger.addHandler(handler)

@@ -3,13 +3,14 @@ API Iris com JWT - versao para produçao - modularizada
 pronta para deploy em container/cloud
 """
 
-import logging
 import os
 import pickle
+import time
 from pathlib import Path
 
 import numpy as np
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException, Request
+from prometheus_fastapi_instrumentator import Instrumentator
 from pydantic import BaseModel, Field
 
 from app.auth import (
@@ -18,13 +19,14 @@ from app.auth import (
     create_token,
     get_current_user,
 )
+from app.logging_config import setup_logging
+from app.metrics import MODEL_LOADED, PREDICTION_LATENCY, PREDICTIONS_TOTAL
+from app.middleware import LoggingMiddleware
 
 ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
+API_VERSION = "4.1.0"  # versão atualizada c monitoramento
 
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s | %(levelname)s | %(message)s"
-)
-logger = logging.getLogger(__name__)
+logger = setup_logging(os.getenv("LOG_LEVEL", "INFO"))
 
 
 class LoginRequest(BaseModel):
@@ -77,17 +79,23 @@ except FileNotFoundError:
     logger.warning("modelo nao encontrado | servico de predicao indisponivel")
 
 MODELO_OK = modelo is not None and classes is not None
+MODEL_LOADED.set(1 if MODELO_OK else 0)
 
 
 app = FastAPI(
     title="API de classificacao de flores iris",
-    description="API de classificacao protegida por Token JWT para deploy em produção",
-    version="4.0.0",
-    openapi_tags=[
-        {"name": "Auth", "description": "Autenticacao"},
-        {"name": "Predict", "description": "Predicao Protegida"},
-    ],
+    description="API de classificacao com logging",
+    version=API_VERSION,
+    docs_url="/docs",
+    redoc_url="/redoc",
+    redoc_js_url="https://cdn.jsdelivr.net/npm/redoc@2/bundles/redoc.standalone.js",
 )
+
+# Adiciona Middleware de Logging (intercepta todas as requisicoes)
+app.add_middleware(LoggingMiddleware)
+
+# Instrumentacao Prometheus (adiciona metricas automaticas + endpoint /metrics)
+Instrumentator().instrument(app).expose(app, endpoint="/metrics")
 
 
 @app.get("/")
@@ -95,10 +103,11 @@ def home():
     """Informações da API"""
     return {
         "api": "Iris Classifier",
-        "versao": "4.0.0",
+        "versao": API_VERSION,
         "ambiente": ENVIRONMENT,
         "modelo_carregado": MODELO_OK,
         "docs": "/docs",
+        "metrics": "/metrics",
     }
 
 
@@ -137,8 +146,15 @@ def get_me(current_user: dict = Depends(get_current_user)):
 
 
 @app.post("/predict", response_model=IrisResponse)
-def predict(payload: IrisRequest, current_user: dict = Depends(get_current_user)):
+def predict(
+    request: Request,
+    payload: IrisRequest,
+    current_user: dict = Depends(get_current_user),
+):
     """Faz predicao (requer autenticacao)."""
+    start = time.perf_counter()
+    trace_id = request.state.trace_id
+
     if not MODELO_OK:
         raise HTTPException(status_code=503, detail="Modelo nao disponivel")
 
@@ -156,8 +172,31 @@ def predict(payload: IrisRequest, current_user: dict = Depends(get_current_user)
     pred_idx = modelo.predict(features)[0]
     probs = modelo.predict_proba(features)[0]
     classe = classes[pred_idx]
+    confidence = float(max(probs))
 
-    logger.info(f"Predicao: {classe} por {current_user['username']}")
+    latency = time.perf_counter() - start
+
+    # Metricas Prometheus
+    PREDICTIONS_TOTAL.labels(classe=classe, user=current_user["username"]).inc()
+    PREDICTION_LATENCY.observe(latency)
+
+    # Log estruturado
+    logger.info(
+        "prediction_completed",
+        extra={
+            "trace_id": trace_id,
+            "user": current_user["username"],
+            "classe": classe,
+            "confidence": round(confidence, 4),
+            "latency_ms": round(latency * 1000, 2),
+            "features": {
+                "sepal_length": payload.sepal_length,
+                "sepal_width": payload.sepal_width,
+                "petal_length": payload.petal_length,
+                "petal_width": payload.petal_width,
+            },
+        },
+    )
 
     return IrisResponse(
         sucesso=True,

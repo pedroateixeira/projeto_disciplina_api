@@ -6,7 +6,7 @@ define contadores, histogramas e gauges de monitoramento
 
 from prometheus_client import Counter, Gauge, Histogram
 
-PREDICTIONS_TOTAL = (
+PREDICTIONS_TOTAL = Counter(
     "iris_predictions_total",
     "Total de predicoes realizadas",
     ["classe", "user"],
