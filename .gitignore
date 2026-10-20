@@ -1,10 +1,37 @@
+# Ambientes virtuais e cache do Python
 .venv/
 __pycache__/
 *.pyc
-.DS_Store
-/flask/
-/fastAPI/
+*.egg-info/
+dist/
+build/
+
+# Variaveis de ambiente e segredos (nunca versionar)
 .env
 **/.env
+.env.*
+**/.env.*
+!.env.example
+!**/.env.example
+.streamlit/secrets.toml
+*.pem
+*.key
+*.p12
+
+# Caches de ferramentas e testes
+.ruff_cache/
+.pytest_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# Logs
+*.log
+
+# Editores e sistema operacional
+.idea/
+.vscode/
+.DS_Store
+
 # v1 arquivada localmente
 v1-deprecated/

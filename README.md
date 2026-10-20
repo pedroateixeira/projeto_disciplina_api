@@ -7,7 +7,7 @@ API que serve um modelo de Machine Learning treinado no clássico dataset **Iris
 - comprimento da pétala (`petal_length`)
 - largura da pétala (`petal_width`)
 
-Construída com **FastAPI**, protegida por autenticação **JWT**, com **rate limiting**, **logs estruturados**, **métricas Prometheus** e uma stack de monitoramento (Prometheus + Grafana) pronta para subir com Docker Compose.
+Construída com **FastAPI**, protegida por autenticação **JWT**, com **rate limiting**, **logs estruturados**, **métricas Prometheus** e uma stack de monitoramento (Prometheus + Grafana) pronta para subir com Docker Compose. Acompanha um frontend em **Streamlit** para uso interativo e usa o **uv** como gerenciador de pacotes.
 
 > A v2 é a evolução da v1 (API única em um `main.py`): o código foi **modularizado** e ganhou predição em lote, rate limiting, alertas e dashboards. Os usuários, as senhas (via variáveis de ambiente) e a resposta do `/predict` continuam compatíveis com a v1.
 
@@ -69,12 +69,17 @@ Construída com **FastAPI**, protegida por autenticação **JWT**, com **rate li
 │   └── models/
 │       ├── modelo_iris.pkl    # Modelo scikit-learn treinado
 │       └── classes_iris.pkl   # Nomes das classes (espécies)
+├── frontend/
+│   ├── streamlit_app.py   # Interface web que consome a API
+│   ├── Dockerfile         # Imagem do frontend (deploy)
+│   └── pyproject.toml / requirements.txt
 ├── prometheus/            # Configuração, alertas e Dockerfile do Prometheus
 ├── grafana/               # Provisionamento do data source e Dockerfile do Grafana
 ├── docker-compose.yml     # Stack local: API + Prometheus + Grafana
 ├── Dockerfile             # Imagem da API (Python 3.13)
-├── render.yaml            # Blueprint do Render
-├── requirements.txt
+├── render.yaml            # Blueprint do Render (API, Prometheus, Grafana, frontend)
+├── pyproject.toml / uv.lock  # Dependências gerenciadas pelo uv (workspace com o frontend)
+├── requirements.txt       # Exportado do uv (usado pelo Dockerfile)
 └── .env.example           # Modelo das variáveis de ambiente
 ```
 
@@ -102,7 +107,7 @@ A documentação interativa fica em `/docs` (Swagger) e `/redoc`. O token expira
 ### Pré-requisitos
 
 - Docker e Docker Compose (recomendado), **ou**
-- Python **3.13+** para rodar sem Docker
+- Python **3.13+** e [uv](https://docs.astral.sh/uv/) para rodar sem Docker
 
 ### 1. Configurar as variáveis de ambiente
 
@@ -158,19 +163,37 @@ Para parar e apagar também os dados do Prometheus e do Grafana:
 docker compose down -v
 ```
 
-### 3. Opção B — Python (sem Docker)
+### 3. Opção B — Python com uv (sem Docker)
+
+Instale as dependências da API e do frontend (fazem parte do mesmo workspace):
 
 ```bash
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
+uv sync --all-packages
 ```
 
 Suba a API passando o `.env` ao uvicorn:
 
 ```bash
-uvicorn app.main:app --reload --port 8000 --env-file .env
+uv run uvicorn app.main:app --reload --port 8000 --env-file .env
 ```
+
+Sem o uv, use `python -m venv .venv`, ative o ambiente e rode `pip install -r requirements.txt`.
+
+Ao adicionar uma dependência, use `uv add <pacote>` e regenere o `requirements.txt` usado pelo Docker:
+
+```bash
+uv export --no-hashes --no-emit-project --no-emit-workspace --no-dev -o requirements.txt
+```
+
+### 4. Frontend (Streamlit)
+
+Com a API rodando, em outro terminal:
+
+```bash
+uv run streamlit run frontend/streamlit_app.py
+```
+
+Acesse http://localhost:8501, faça login e informe as medidas da flor. O frontend lê a variável `API_URL` (padrão `http://localhost:8000`).
 
 ---
 
@@ -358,13 +381,20 @@ docker compose logs -f api
 
 ## Deploy no Render
 
-O arquivo `render.yaml` descreve três serviços independentes (o Render não tem `docker compose`): **API**, **Prometheus** e **Grafana**.
+O arquivo `render.yaml` descreve quatro serviços independentes (o Render não tem `docker compose`):
+
+| Serviço              | Descrição                         |
+|----------------------|-----------------------------------|
+| `api-iris-v2`        | API FastAPI                       |
+| `prometheus-iris-v2` | Prometheus (scrape da API)        |
+| `grafana-iris-v2`    | Grafana (dashboards)              |
+| `frontend-iris-v2`   | Frontend Streamlit                |
 
 1. No Render, vá em **Blueprints → New Blueprint Instance** e conecte este repositório.
 2. Defina, no painel do Render, as variáveis marcadas como secretas: `ADMIN_PASSWORD`, `USER_PASSWORD` e `GF_SECURITY_ADMIN_PASSWORD`. O `JWT_SECRET` é gerado automaticamente.
-3. O Prometheus faz scrape da API pública em `/metrics` e o Grafana usa o Prometheus como data source via `PROMETHEUS_URL`.
+3. O Prometheus faz scrape da API pública em `/metrics`, o Grafana usa o Prometheus como data source via `PROMETHEUS_URL` e o frontend chama a API pela variável `API_URL`.
 
-> Se algum serviço for criado com outro nome, ajuste `API_TARGET` (Prometheus) e `PROMETHEUS_URL` (Grafana) no `render.yaml`.
+> Se algum serviço for criado com outro nome, ajuste `API_TARGET` (Prometheus), `PROMETHEUS_URL` (Grafana) e `API_URL` (frontend) no `render.yaml`.
 
 No plano gratuito, o primeiro acesso pode demorar alguns segundos enquanto o serviço "acorda".
 

@@ -146,3 +146,18 @@ services:
       # Datasource provisionado em grafana/provisioning/datasources/prometheus.yml
       - key: PROMETHEUS_URL
         value: "https://prometheus-iris-v2.onrender.com"
+
+  # ===========================================================================
+  # WEB SERVICE - Frontend (Streamlit)
+  # ===========================================================================
+  - type: web
+    name: frontend-iris-v2
+    runtime: docker
+    region: ohio
+    plan: free
+    dockerfilePath: ./frontend/Dockerfile
+    dockerContext: ./frontend
+    envVars:
+      # URL publica da API (o frontend chama /login e /predict nela)
+      - key: API_URL
+        value: "https://api-iris-v2.onrender.com"

@@ -1,0 +1,27 @@
+[project]
+name = "projeto-disciplina-api"
+version = "0.1.0"
+description = "API de classificacao de flores Iris (FastAPI + JWT + Prometheus) - v2"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "fastapi>=0.143.1",
+    "prometheus-client>=0.26.0",
+    "prometheus-fastapi-instrumentator>=8.1.0",
+    "python-multipart>=0.0.20",
+    "pyjwt>=2.15.1",
+    "python-json-logger>=4.2.0",
+    "scikit-learn>=1.9.1",
+    "slowapi>=0.1.9",
+    "uvicorn[standard]>=0.54.0",
+]
+
+[dependency-groups]
+dev = [
+    "httpx>=0.28.1",
+]
+
+[tool.uv.workspace]
+members = [
+    "frontend",
+]
