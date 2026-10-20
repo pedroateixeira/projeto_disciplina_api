@@ -1,13 +1,11 @@
 .venv/
+v1-deprecated/
 **/__pycache__/
 *.pyc
 .git/
 .gitignore
 .dockerignore
-Dockerfile
 .env
 **/.env
-fastAPI/
-flask/
-frontend/
+.DS_Store
 README.md

@@ -1,6 +1,6 @@
-# ============================================================================
-# Dockerfile para API Iris com JWT
-# ============================================================================
+# =============================================================================
+# Dockerfile para API Iris v2 com JWT
+# =============================================================================
 
 # Imagem base: Python 3.13 slim (menor e mais segura)
 FROM python:3.13-slim
@@ -20,6 +20,6 @@ COPY app/ ./app/
 # Expor a porta (documentacao, Render usa $PORT)
 EXPOSE 8000
 
-# Comando para iniciar a API (agora app.main:app)
-# Usamos $PORT para compatibilidade com Render/Heroku
-CMD uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}
+# Comando para iniciar a API (app.main:app)
+# Render injeta a env PORT. Localmente cai no default 8000.
+CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]

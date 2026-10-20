@@ -6,3 +6,5 @@ __pycache__/
 /fastAPI/
 .env
 **/.env
+# v1 arquivada localmente
+v1-deprecated/

@@ -1,0 +1,148 @@
+# =============================================================================
+# RENDER BLUEPRINT - API Iris v2 (Projeto Final)
+# =============================================================================
+# Este arquivo define a infraestrutura para deploy no Render.
+# 
+# Diferenças da v1 (aula_06):
+# - Nome do serviço: api-iris-v2 (para coexistir com v1)
+# - Novas variáveis de ambiente para rate limiting
+# - Mesmo modelo, mais features de produção
+#
+# Para deploy:
+# 1. Conecte o repositório ao Render
+# 2. Selecione este arquivo como Blueprint
+# 3. O Render criará o serviço automaticamente
+# =============================================================================
+
+services:
+  # ===========================================================================
+  # WEB SERVICE - API de Inferência v2
+  # ===========================================================================
+  - type: web
+    name: api-iris-v2
+    runtime: docker
+    region: ohio  # Mesma região da v1 para consistência
+    
+    # =========================================================================
+    # Plano de recursos
+    # =========================================================================
+    # free: Ideal para desenvolvimento/aprendizado
+    # starter: Para produção leve ($7/mês)
+    # standard: Para produção com mais recursos ($25/mês)
+    plan: free
+    
+    # =========================================================================
+    # Configuração do Docker
+    # =========================================================================
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    
+    # =========================================================================
+    # Health Check
+    # =========================================================================
+    # O Render verifica periodicamente se a API está respondendo
+    healthCheckPath: /health
+    
+    # =========================================================================
+    # Variáveis de Ambiente
+    # =========================================================================
+    envVars:
+      # -----------------------------------------------------------------------
+      # Configuração da Aplicação
+      # -----------------------------------------------------------------------
+      - key: ENVIRONMENT
+        value: production
+      
+      - key: LOG_LEVEL
+        value: INFO
+      
+      # -----------------------------------------------------------------------
+      # Segurança - JWT
+      # -----------------------------------------------------------------------
+      # IMPORTANTE: Em produção, gere uma chave secreta forte!
+      # Use: python -c "import secrets; print(secrets.token_hex(32))"
+      - key: JWT_SECRET
+        generateValue: true  # Render gera automaticamente
+      
+      - key: TOKEN_EXPIRE_MINUTES
+        value: "15"
+      
+      # -----------------------------------------------------------------------
+      # Rate Limiting
+      # -----------------------------------------------------------------------
+      # Configurações de limite de requisições por minuto
+      - key: RATE_LIMIT_DEFAULT
+        value: "60/minute"  # Requisições padrão por minuto
+      
+      - key: RATE_LIMIT_PREDICT
+        value: "30/minute"  # Predições individuais por minuto
+      
+      - key: RATE_LIMIT_BATCH
+        value: "10/minute"  # Predições em batch por minuto
+      
+      - key: RATE_LIMIT_LOGIN
+        value: "10/minute"  # Tentativas de login por minuto
+      
+      # -----------------------------------------------------------------------
+      # Configuração do Modelo
+      # -----------------------------------------------------------------------
+      # -----------------------------------------------------------------------
+      # Métricas (desabilitado em produção free tier)
+      # -----------------------------------------------------------------------
+      # No plano free do Render, não temos Prometheus/Grafana
+      # As métricas ficam expostas em /metrics mas não são coletadas
+      # -----------------------------------------------------------------------
+      # CORS
+      # -----------------------------------------------------------------------
+      # Em produção, configure os origins permitidos
+      # Exemplo: "https://meusite.com,https://app.meusite.com"
+      # -----------------------------------------------------------------------
+      # Usuários de demo
+      # -----------------------------------------------------------------------
+      # Em produção real, use um banco de dados!
+      # Defina os valores no painel do Render (sync: false = nao fica no repositorio)
+      - key: ADMIN_PASSWORD
+        sync: false
+
+      - key: USER_PASSWORD
+        sync: false
+
+  # ===========================================================================
+  # WEB SERVICE - Prometheus (UI + scrape de métricas)
+  # ===========================================================================
+  - type: web
+    name: prometheus-iris-v2
+    runtime: docker
+    region: ohio
+    plan: free
+    dockerfilePath: ./prometheus/Dockerfile
+    dockerContext: ./prometheus
+    envVars:
+      # Aponta para a API pública (Render dá uma URL por serviço)
+      - key: API_TARGET
+        value: "api-iris-v2.onrender.com"
+      - key: API_SCHEME
+        value: "https"
+      - key: SCRAPE_INTERVAL
+        value: "15s"
+
+  # ===========================================================================
+  # WEB SERVICE - Grafana (UI de dashboards)
+  # ===========================================================================
+  - type: web
+    name: grafana-iris-v2
+    runtime: docker
+    region: ohio
+    plan: free
+    dockerfilePath: ./grafana/Dockerfile
+    dockerContext: ./grafana
+    envVars:
+      - key: GF_SECURITY_ADMIN_USER
+        value: "admin"
+      - key: GF_SECURITY_ADMIN_PASSWORD
+        sync: false
+      - key: GF_USERS_ALLOW_SIGN_UP
+        value: "false"
+      # Datasource provisionado em grafana/provisioning/datasources/prometheus.yml
+      - key: PROMETHEUS_URL
+        value: "https://prometheus-iris-v2.onrender.com"
